@@ -135,6 +135,26 @@ div.assistant {
   text-wrap: auto;
 }
 
+.fires {
+  margin-top: 0.2em;
+  display: flex;
+  width: 100%;
+  justify-content: space-around;
+}
+
+.fire {
+  margin: 0.4em;
+  clear: none;
+  display: inline;
+  color: #ff6f00;
+  background-color: var(--bg-med);
+  border-radius: 1em;
+}
+
+.fire p {
+  text-align: center;
+}
+
 .loader {
   color: #fff;
   font-size: 10px;

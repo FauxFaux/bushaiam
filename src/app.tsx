@@ -4,13 +4,20 @@ import type { Message } from 'ollama';
 import { AssistantLoaderContent, Messages } from './messages.tsx';
 import { doStream } from './client.ts';
 import { serializeError } from 'serialize-error';
+import { Fire } from './fire.tsx';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [working, setWorking] = useState<boolean>(false);
   const [error, setError] = useState<Error | undefined>(undefined);
-
   const [chunks, setChunks] = useState<string>('');
+
+  const [burners, setBurners] = useState({
+    a: 50,
+    b: 60,
+    c: 40,
+    d: 20,
+  });
 
   const input = (
     <InputBox
@@ -53,6 +60,11 @@ export function App() {
         </pre>
       ) : undefined}
       {working ? <AssistantLoaderContent content={chunks} /> : input}
+      <div class={'fires'}>
+        {Object.entries(burners).map(([name, strength]) => (
+          <Fire name={name} strength={strength} />
+        ))}
+      </div>
     </>
   );
 }
