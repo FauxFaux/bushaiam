@@ -6,15 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "format": "prettier --log-level warn --write .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "preact": "^10.27.2"
+    "ensure-error": "^5",
+    "ollama": "^0.6",
+    "preact": "^10",
+    "react-icons": "^5",
+    "serialize-error": "^13.0.1"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.2",
-    "@types/node": "^24.10.1",
-    "typescript": "~5.9.3",
+    "@preact/preset-vite": "^2",
+    "@types/node": "^24",
+    "prettier": "~3.8",
+    "typescript": "~5.9",
     "vite": "^8.0.0-beta.13"
   },
   "overrides": {
