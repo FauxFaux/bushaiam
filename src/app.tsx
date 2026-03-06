@@ -1,10 +1,10 @@
 import { InputBox } from './input-box.tsx';
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type { Message, ToolCall } from 'ollama';
 import { AssistantLoaderContent, Messages } from './messages.tsx';
-import { doStream } from './client.ts';
 import { serializeError } from 'serialize-error';
 import { Fire } from './fire.tsx';
+import { doStream } from './client.ts';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -19,46 +19,50 @@ export function App() {
     4: 20,
   });
 
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1];
+    if (latestMessage?.role !== 'user' || working) return;
+
+    doStream(messages, {
+      onChunk: (chunk) => setChunks((existing) => existing + chunk),
+      onThought: () => {},
+      onMessage: (msg) => {
+        setChunks('');
+        if (msg.ok) {
+          setMessages((messages) => [...messages, msg.value]);
+          if (msg.value.tool_calls) {
+            handleCall(msg.value.tool_calls, (key, value) =>
+              setBurners((curr) => ({ ...curr, [key ?? 1]: value })),
+            );
+            setMessages((messages) => [
+              ...messages,
+              {
+                role: 'tool',
+                content: 'ok',
+              },
+            ]);
+          }
+          setWorking(false);
+        } else {
+          console.error(msg.err);
+          setError(msg.err);
+        }
+      },
+    });
+  }, [messages]);
+
   const input = (
     <InputBox
       hasContent={messages.length > 0}
-      onSend={(msg) => {
-        const newMessages = [
+      onSend={(msg) =>
+        setMessages((messages) => [
           ...messages,
           {
             role: 'user',
             content: msg,
           },
-        ];
-        setMessages(newMessages);
-        setWorking(true);
-        doStream(newMessages, {
-          onChunk: (chunk) => setChunks((existing) => existing + chunk),
-          onThought: () => {},
-          onMessage: (msg) => {
-            setChunks('');
-            if (msg.ok) {
-              setMessages((messages) => [...messages, msg.value]);
-              if (msg.value.tool_calls) {
-                handleCall(msg.value.tool_calls, (key, value) =>
-                  setBurners((curr) => ({ ...curr, [key ?? 1]: value })),
-                );
-                setMessages((messages) => [
-                  ...messages,
-                  {
-                    role: 'tool',
-                    content: 'ok',
-                  },
-                ]);
-              }
-              setWorking(false);
-            } else {
-              console.error(msg.err);
-              setError(msg.err);
-            }
-          },
-        });
-      }}
+        ])
+      }
     />
   );
 

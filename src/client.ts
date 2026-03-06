@@ -6,29 +6,20 @@ import ensureError from 'ensure-error';
 interface Handlers {
   onThought: (chunk: string) => void;
   onChunk: (chunk: string) => void;
-  onMessage: (msg: Result<Message>) => void;
+  onMessage: (msg: Message) => void;
+  onDone: (err: Error | undefined) => void;
 }
 
 export function doStream(messages: Message[], handlers: Handlers) {
   void worker(messages, handlers)
-    .then((value) =>
-      handlers.onMessage({
-        ok: true,
-        value,
-      }),
-    )
-    .catch((err) =>
-      handlers.onMessage({
-        ok: false,
-        err: ensureError(err),
-      }),
-    );
+    .then(() => handlers.onDone(undefined))
+    .catch((err) => handlers.onDone(ensureError(err)));
 }
 
 async function worker(
   messages: Message[],
-  handlers: Handlers,
-): Promise<Message> {
+  { onThought, onChunk, onMessage, onDone }: Handlers,
+): Promise<void> {
   const ollama = new Ollama({
     host: import.meta.env.VITE_OLLAMA_HOST ?? window.location.toString(),
   });
@@ -63,37 +54,31 @@ async function worker(
   let content = '';
   let thinking = '';
 
-  let lastMessage: Message | null = null;
-  let toolMessage: Message | null = null;
-
   for await (const chunk of stream) {
+    const tools = !!chunk.message.tool_calls?.length;
+    const thoughts = !!chunk.message.thinking
     if (chunk.message.thinking) {
       if (!inThinking) {
         inThinking = true;
       }
-      handlers.onThought(chunk.message.thinking);
+      onThought(chunk.message.thinking);
       // accumulate the partial thinking
       thinking += chunk.message.thinking;
-    } else if (chunk.message.content) {
+    }
+
+    if (chunk.message.content) {
       if (inThinking) {
         inThinking = false;
       }
-      handlers.onChunk(chunk.message.content);
+      onChunk(chunk.message.content);
       // accumulate the partial content
       content += chunk.message.content;
-    } else if (chunk.message.tool_calls) {
+    }
+
+    if (chunk.message.tool_calls) {
       toolMessage = chunk.message;
     }
-    lastMessage = chunk.message;
   }
 
-  if (!lastMessage) throw new Error('nothing received');
-
-  if (toolMessage) return toolMessage;
-
-  return {
-    ...lastMessage,
-    content,
-    thinking,
-  };
+  onDone();
 }
