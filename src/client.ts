@@ -37,6 +37,26 @@ async function worker(
     model: 'goekdenizguelmez/josie:4b',
     messages,
     stream: true,
+    tools: [
+      {
+        type: 'function',
+        function: {
+          name: 'setBurner',
+          description:
+            'control the amount of fire on a burner, as an integer percentage',
+          parameters: {
+            properties: {
+              burner: {
+                type: 'number',
+              },
+              amount: {
+                type: 'number',
+              },
+            },
+          },
+        },
+      },
+    ],
   });
 
   let inThinking = false;
@@ -44,6 +64,7 @@ async function worker(
   let thinking = '';
 
   let lastMessage: Message | null = null;
+  let toolMessage: Message | null = null;
 
   for await (const chunk of stream) {
     if (chunk.message.thinking) {
@@ -60,11 +81,15 @@ async function worker(
       handlers.onChunk(chunk.message.content);
       // accumulate the partial content
       content += chunk.message.content;
+    } else if (chunk.message.tool_calls) {
+      toolMessage = chunk.message;
     }
     lastMessage = chunk.message;
   }
 
   if (!lastMessage) throw new Error('nothing received');
+
+  if (toolMessage) return toolMessage;
 
   return {
     ...lastMessage,

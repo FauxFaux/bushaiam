@@ -8,7 +8,14 @@ export function Messages({ messages }: { messages: Message[] }) {
       case 'user':
         return <UserContent content={message.content} />;
       case 'assistant':
-        return <AssistantContent content={message.content} />;
+        if (message.content) {
+          return <AssistantContent content={message.content} />;
+        } else {
+          return <AssistantCall calls={message.tool_calls!} />;
+        }
+        break;
+      case 'tool':
+        return <UserTool content={message.content} />;
     }
 
     return (
@@ -30,10 +37,41 @@ function UserContent({ content }: { content: string }) {
   );
 }
 
+function UserTool({ content }: { content: string }) {
+  return (
+    <div class="message mono">
+      <span style={'margin: 0.8em'}>
+        <FaUserInjured />
+      </span>
+      SKREEEEEE! BZZZT! OPERATION COMPLETE! {content}
+    </div>
+  );
+}
+
 export function AssistantContent({ content }: { content: string }) {
   return (
     <div class="message assistant writing-regular">
       {content}
+      <img class={'dc-icon'} src={dcIcon} />
+    </div>
+  );
+}
+
+export function AssistantCall({
+  calls,
+}: {
+  calls: Required<Message>['tool_calls'];
+}) {
+  return (
+    <div class="message assistant mono">
+      BEEP! BOOP!{' '}
+      {calls.map(
+        (call) =>
+          call.function.name +
+          '(' +
+          JSON.stringify(call.function.arguments) +
+          ')',
+      )}
       <img class={'dc-icon'} src={dcIcon} />
     </div>
   );

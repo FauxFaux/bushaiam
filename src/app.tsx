@@ -1,6 +1,6 @@
 import { InputBox } from './input-box.tsx';
 import { useState } from 'preact/hooks';
-import type { Message } from 'ollama';
+import type { Message, ToolCall } from 'ollama';
 import { AssistantLoaderContent, Messages } from './messages.tsx';
 import { doStream } from './client.ts';
 import { serializeError } from 'serialize-error';
@@ -13,10 +13,10 @@ export function App() {
   const [chunks, setChunks] = useState<string>('');
 
   const [burners, setBurners] = useState({
-    a: 50,
-    b: 60,
-    c: 40,
-    d: 20,
+    1: 50,
+    2: 60,
+    3: 40,
+    4: 20,
   });
 
   const input = (
@@ -39,6 +39,18 @@ export function App() {
             setChunks('');
             if (msg.ok) {
               setMessages((messages) => [...messages, msg.value]);
+              if (msg.value.tool_calls) {
+                handleCall(msg.value.tool_calls, (key, value) =>
+                  setBurners((curr) => ({ ...curr, [key ?? 1]: value })),
+                );
+                setMessages((messages) => [
+                  ...messages,
+                  {
+                    role: 'tool',
+                    content: 'ok',
+                  },
+                ]);
+              }
               setWorking(false);
             } else {
               console.error(msg.err);
@@ -67,4 +79,13 @@ export function App() {
       </div>
     </>
   );
+}
+
+function handleCall(
+  calls: ToolCall[],
+  setBurner: (key: number, value: number) => void,
+) {
+  for (const call of calls) {
+    setBurner(call.function.arguments.burner, call.function.arguments.amount);
+  }
 }

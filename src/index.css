@@ -83,6 +83,11 @@ button:focus-visible {
   font-style: normal;
 }
 
+.mono {
+  font-family: 'Consolas', monospace;
+  font-weight: bold;
+}
+
 div.chat {
   display: flex;
 
