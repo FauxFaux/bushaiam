@@ -1,5 +1,10 @@
 import { InputBox } from './input-box.tsx';
-import { useEffect, useState } from 'preact/hooks';
+import {
+  type Dispatch,
+  type StateUpdater,
+  useEffect,
+  useState,
+} from 'preact/hooks';
 import type { Message, ToolCall } from 'ollama';
 import { AssistantLoaderContent, Messages } from './messages.tsx';
 import { serializeError } from 'serialize-error';
@@ -21,35 +26,52 @@ export function App() {
 
   useEffect(() => {
     const latestMessage = messages[messages.length - 1];
-    if (latestMessage?.role !== 'user' || working) return;
+    if (!['user', 'tool'].includes(latestMessage?.role) || working) return;
 
+    setWorking(true);
     doStream(messages, {
       onChunk: (chunk) => setChunks((existing) => existing + chunk),
       onThought: () => {},
       onMessage: (msg) => {
-        setChunks('');
-        if (msg.ok) {
-          setMessages((messages) => [...messages, msg.value]);
-          if (msg.value.tool_calls) {
-            handleCall(msg.value.tool_calls, (key, value) =>
-              setBurners((curr) => ({ ...curr, [key ?? 1]: value })),
-            );
-            setMessages((messages) => [
-              ...messages,
-              {
-                role: 'tool',
-                content: 'ok',
-              },
-            ]);
-          }
-          setWorking(false);
-        } else {
-          console.error(msg.err);
-          setError(msg.err);
+        setMessages((messages) => [...messages, msg]);
+        if (msg.tool_calls) {
+          handleCall(
+            msg.tool_calls,
+            (key, value) => {
+              if (
+                typeof key !== 'number' ||
+                !Number.isInteger(key) ||
+                key < 1 ||
+                key > 4
+              ) {
+                return "'burner' must be 1, 2, 3 or 4";
+              }
+              if (typeof value !== 'number' || value < 0 || value > 100) {
+                return "'amount' must be a positive number between 0 and 100";
+              }
+              setBurners((curr) => ({ ...curr, [key]: value }));
+              return 'set';
+            },
+            setMessages,
+          );
         }
       },
+      onDone: (err) => {
+        if (err) {
+          console.error(err);
+          setError(err);
+        }
+        setChunks('');
+        setWorking(false);
+
+        window.scrollTo({
+          // bottom
+          top: document.body.scrollHeight,
+          behavior: 'smooth',
+        });
+      },
     });
-  }, [messages]);
+  }, [messages, working]);
 
   const input = (
     <InputBox
@@ -87,9 +109,20 @@ export function App() {
 
 function handleCall(
   calls: ToolCall[],
-  setBurner: (key: number, value: number) => void,
+  setBurner: (key: number, value: number) => string,
+  setMessages: Dispatch<StateUpdater<Message[]>>,
 ) {
   for (const call of calls) {
-    setBurner(call.function.arguments.burner, call.function.arguments.amount);
+    const content = setBurner(
+      call.function.arguments.burner,
+      call.function.arguments.amount,
+    );
+    setMessages((messages) => [
+      ...messages,
+      {
+        role: 'tool',
+        content,
+      },
+    ]);
   }
 }

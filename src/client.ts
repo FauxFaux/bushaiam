@@ -1,6 +1,5 @@
 import { Ollama } from 'ollama/browser';
 import type { Message } from 'ollama';
-import type { Result } from './ts.ts';
 import ensureError from 'ensure-error';
 
 interface Handlers {
@@ -18,7 +17,7 @@ export function doStream(messages: Message[], handlers: Handlers) {
 
 async function worker(
   messages: Message[],
-  { onThought, onChunk, onMessage, onDone }: Handlers,
+  { onThought, onChunk, onMessage }: Handlers,
 ): Promise<void> {
   const ollama = new Ollama({
     host: import.meta.env.VITE_OLLAMA_HOST ?? window.location.toString(),
@@ -55,8 +54,6 @@ async function worker(
   let thinking = '';
 
   for await (const chunk of stream) {
-    const tools = !!chunk.message.tool_calls?.length;
-    const thoughts = !!chunk.message.thinking
     if (chunk.message.thinking) {
       if (!inThinking) {
         inThinking = true;
@@ -76,9 +73,16 @@ async function worker(
     }
 
     if (chunk.message.tool_calls) {
-      toolMessage = chunk.message;
+      onMessage(chunk.message);
     }
   }
 
-  onDone();
+  if (content || thinking) {
+    const message: Message = {
+      role: 'assistant',
+      content,
+    };
+    if (thinking) message.thinking = thinking;
+    onMessage(message);
+  }
 }
