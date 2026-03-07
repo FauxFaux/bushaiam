@@ -36,13 +36,17 @@ export function App() {
       onThought: () => {},
       onMessage: (msg) => {
         setMessages((messages) => [...messages, msg]);
-        if (msg.tool_calls) {
-          handleCall(
-            msg.tool_calls,
-            (args) => handleBurnerCall(args.burner, args.amount, setBurners),
-            setMessages,
-          );
-        }
+        handleCalls(
+          msg.tool_calls,
+          (name, args) => {
+            switch (name) {
+              case 'setBurner':
+                return handleBurnerCall(args.burner, args.amount, setBurners);
+            }
+            return `unrecognised function ${name}`;
+          },
+          setMessages,
+        );
       },
       onDone: (err) => {
         if (err) {
@@ -95,13 +99,13 @@ export function App() {
   );
 }
 
-function handleCall(
-  calls: ToolCall[],
-  handler: (args: Record<string, unknown>) => string,
+function handleCalls(
+  calls: ToolCall[] | undefined,
+  handler: (name: string, args: Record<string, unknown>) => string,
   setMessages: Dispatch<StateUpdater<Message[]>>,
 ) {
-  for (const call of calls) {
-    const content = handler(call.function.arguments);
+  for (const call of calls ?? []) {
+    const content = handler(call.function.name, call.function.arguments);
     setMessages((messages) => [
       ...messages,
       {
