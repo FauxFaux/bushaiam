@@ -11,13 +11,15 @@ import { serializeError } from 'serialize-error';
 import { Fire } from './fire.tsx';
 import { doStream } from './client.ts';
 
+type Burners = Record<number, number>;
+
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [working, setWorking] = useState<boolean>(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [chunks, setChunks] = useState<string>('');
 
-  const [burners, setBurners] = useState({
+  const [burners, setBurners] = useState<Burners>({
     1: 50,
     2: 60,
     3: 40,
@@ -37,21 +39,7 @@ export function App() {
         if (msg.tool_calls) {
           handleCall(
             msg.tool_calls,
-            (key, value) => {
-              if (
-                typeof key !== 'number' ||
-                !Number.isInteger(key) ||
-                key < 1 ||
-                key > 4
-              ) {
-                return "'burner' must be 1, 2, 3 or 4";
-              }
-              if (typeof value !== 'number' || value < 0 || value > 100) {
-                return "'amount' must be a positive number between 0 and 100";
-              }
-              setBurners((curr) => ({ ...curr, [key]: value }));
-              return 'set';
-            },
+            (args) => handleBurnerCall(args.burner, args.amount, setBurners),
             setMessages,
           );
         }
@@ -109,14 +97,11 @@ export function App() {
 
 function handleCall(
   calls: ToolCall[],
-  setBurner: (key: number, value: number) => string,
+  handler: (args: Record<string, unknown>) => string,
   setMessages: Dispatch<StateUpdater<Message[]>>,
 ) {
   for (const call of calls) {
-    const content = setBurner(
-      call.function.arguments.burner,
-      call.function.arguments.amount,
-    );
+    const content = handler(call.function.arguments);
     setMessages((messages) => [
       ...messages,
       {
@@ -125,4 +110,19 @@ function handleCall(
       },
     ]);
   }
+}
+
+function handleBurnerCall(
+  key: unknown,
+  value: unknown,
+  setBurners: Dispatch<StateUpdater<Burners>>,
+) {
+  if (typeof key !== 'number' || !Number.isInteger(key) || key < 1 || key > 4) {
+    return "'burner' must be 1, 2, 3 or 4";
+  }
+  if (typeof value !== 'number' || value < 0 || value > 100) {
+    return "'amount' must be a positive number between 0 and 100";
+  }
+  setBurners((curr) => ({ ...curr, [key]: value }));
+  return 'set';
 }
