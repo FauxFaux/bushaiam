@@ -14,16 +14,13 @@
     "ollama": "^0.6",
     "preact": "^10",
     "react-icons": "^5",
-    "serialize-error": "^13.0.1"
+    "serialize-error": "^13"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2",
     "@types/node": "^24",
     "prettier": "~3.8",
-    "typescript": "~5.9",
-    "vite": "^8.0.0-beta.13"
-  },
-  "overrides": {
-    "vite": "^8.0.0-beta.13"
+    "typescript": "~6.0",
+    "vite": "^8"
   }
 }
