@@ -1,18 +1,18 @@
-import { useState } from 'preact/hooks';
-
 export function InputBox({
   onSend,
   hasContent,
+  value,
+  onChange,
 }: {
   hasContent: boolean;
+  value: string;
+  onChange: (value: string) => void;
   onSend: (msg: string) => void;
 }) {
-  const [value, setValue] = useState<string>('');
   function send(e: KeyboardEvent | MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     onSend(value);
-    setValue('');
   }
 
   return (
@@ -20,7 +20,7 @@ export function InputBox({
       <input
         placeholder={hasContent ? undefined : 'Hey, whassup?'}
         value={value}
-        onChange={(e) => setValue(e.currentTarget.value)}
+        onChange={(e) => onChange(e.currentTarget.value)}
         onKeyUp={(e) => {
           if (e.key === 'Enter') {
             send(e);

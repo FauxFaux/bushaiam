@@ -3,6 +3,7 @@ import {
   type Dispatch,
   type StateUpdater,
   useEffect,
+  useRef,
   useState,
 } from 'preact/hooks';
 import type { Message, ToolCall } from 'ollama';
@@ -18,6 +19,10 @@ export function App() {
   const [working, setWorking] = useState<boolean>(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [chunks, setChunks] = useState<string>('');
+  const [draft, setDraft] = useState<string>('');
+  const pendingMessage = useRef<{ content: string; history: Message[] } | null>(
+    null,
+  );
 
   const [burners, setBurners] = useState<Burners>({
     1: 50,
@@ -28,7 +33,8 @@ export function App() {
 
   useEffect(() => {
     const latestMessage = messages[messages.length - 1];
-    if (!['user', 'tool'].includes(latestMessage?.role) || working) return;
+    if (!['user', 'tool'].includes(latestMessage?.role) || working || error)
+      return;
 
     setWorking(true);
     doStream(messages, {
@@ -52,6 +58,11 @@ export function App() {
         if (err) {
           console.error(err);
           setError(err);
+          if (pendingMessage.current) {
+            setDraft(pendingMessage.current.content);
+            setMessages(pendingMessage.current.history);
+            pendingMessage.current = null;
+          }
         }
         setChunks('');
         setWorking(false);
@@ -63,20 +74,25 @@ export function App() {
         });
       },
     });
-  }, [messages, working]);
+  }, [messages, working, error]);
 
   const input = (
     <InputBox
       hasContent={messages.length > 0}
-      onSend={(msg) =>
+      value={draft}
+      onChange={setDraft}
+      onSend={(msg) => {
+        pendingMessage.current = { content: msg, history: messages };
+        setDraft('');
+        setError(undefined);
         setMessages((messages) => [
           ...messages,
           {
             role: 'user',
             content: msg,
           },
-        ])
-      }
+        ]);
+      }}
     />
   );
 
